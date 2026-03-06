@@ -29,7 +29,7 @@ export function createBasicFetcher(
         // When the response is 'void'
         return undefined;
       }
-    });
+    }) as Promise<T>;
   };
 }
 

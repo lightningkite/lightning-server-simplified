@@ -34,7 +34,7 @@ export class BulkFetcher {
           this.responseInterceptor?.(res);
           return res.json();
         })
-        .then((r) => r);
+        .then((r) => r) as Promise<O>;
     }
 
     return new Promise<BulkResponse>((resolve, reject) => {
@@ -95,7 +95,7 @@ export class BulkFetcher {
         return;
       }
 
-      const responses: Record<string, BulkResponse> = await response.json();
+      const responses: Record<string, BulkResponse> = (await response.json()) as Record<string, BulkResponse>;
 
       batch.forEach(({ resolve, reject }, id) => {
         const res = responses[id];
