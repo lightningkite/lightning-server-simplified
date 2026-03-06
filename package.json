@@ -1,6 +1,6 @@
 {
   "name": "@lightningkite/lightning-server-simplified",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,16 +18,15 @@
   "author": "Lightning Kite",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lightningkite/lightning-server.git"
+    "url": "git+https://github.com/lightningkite/lightning-server-simplified.git"
   },
   "keywords": [
-    "batteries",
     "ktor",
     "client"
   ],
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/lightningkite/lightning-server/issues"
+    "url": "https://github.com/lightningkite/lightning-server-simplified/issues"
   },
-  "homepage": "https://github.com/lightningkite/lightning-server#readme"
+  "homepage": "https://github.com/lightningkite/lightning-server-simplified#readme"
 }
