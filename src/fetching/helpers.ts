@@ -1,4 +1,4 @@
-import { Query } from "../otherModels";
+import { Query } from "../types/otherModels";
 import { CreateBulkFetcherParams } from "./bulkFetcher";
 
 /**

@@ -8,14 +8,14 @@ import {
   AggregateQuery,
   GroupAggregateQuery,
   Aggregate,
-  DeepPartial,
   QueryPartial,
-} from "./otherModels";
+} from "./types/otherModels";
 import { HasId } from "./sessionRest";
+import { DeepPartial } from "types";
 
 export function mockRestEndpointFunctions<T extends HasId>(
   items: T[],
-  label: string
+  label: string,
 ) {
   return {
     default(userToken?: string): Promise<T> {
@@ -38,7 +38,7 @@ export function mockRestEndpointFunctions<T extends HasId>(
               ascending ? orderItem : orderItem.toString().substring(1)
             ) as keyof T;
             return { key, ascending };
-          }
+          },
         );
 
         sortedItems = filteredItems.sort((a, b) => {
@@ -64,8 +64,11 @@ export function mockRestEndpointFunctions<T extends HasId>(
       return Promise.resolve(result);
     },
 
-    queryPartial(input: QueryPartial<T>, userToken?: string): Promise<Array<DeepPartial<T>>> {
-      return this.query(input, userToken)
+    queryPartial(
+      input: QueryPartial<T>,
+      userToken?: string,
+    ): Promise<Array<DeepPartial<T>>> {
+      return this.query(input, userToken);
     },
 
     detail(id: string, userToken?: string): Promise<T> {
@@ -121,12 +124,12 @@ export function mockRestEndpointFunctions<T extends HasId>(
 
     async bulkModify(
       input: MassModification<T>,
-      userToken?: string
+      userToken?: string,
     ): Promise<number> {
       console.info(label, "bulkModify", { input });
 
       const filteredItems = items.filter((item) =>
-        evaluateCondition(input.condition, item)
+        evaluateCondition(input.condition, item),
       );
 
       return filteredItems.length;
@@ -135,7 +138,7 @@ export function mockRestEndpointFunctions<T extends HasId>(
     modifyWithDiff(
       id: string,
       input: Modification<T>,
-      userToken?: string
+      userToken?: string,
     ): Promise<EntryChange<T>> {
       return Promise.resolve({});
     },
@@ -176,13 +179,13 @@ export function mockRestEndpointFunctions<T extends HasId>(
       console.info(label, "count", { input });
 
       return this.query({ condition: input }, userToken).then(
-        (it) => it.length
+        (it) => it.length,
       );
     },
 
     groupCount(
       input: GroupCountQuery<T>,
-      userToken?: string
+      userToken?: string,
     ): Promise<Record<string, number>> {
       const { condition, groupBy } = input;
 
@@ -190,14 +193,17 @@ export function mockRestEndpointFunctions<T extends HasId>(
         ? items.filter((item) => evaluateCondition(condition, item))
         : items;
 
-      const result = filteredItems.reduce((result, item) => {
-        const key =
-          typeof item[groupBy] === "string"
-            ? (item[groupBy] as unknown as string)
-            : JSON.stringify(item[groupBy]);
-        result[key] = (result[key] || 0) + 1;
-        return result;
-      }, {} as Record<string, number>);
+      const result = filteredItems.reduce(
+        (result, item) => {
+          const key =
+            typeof item[groupBy] === "string"
+              ? (item[groupBy] as unknown as string)
+              : JSON.stringify(item[groupBy]);
+          result[key] = (result[key] || 0) + 1;
+          return result;
+        },
+        {} as Record<string, number>,
+      );
 
       console.info(label, "groupCount", { input, result });
 
@@ -213,7 +219,7 @@ export function mockRestEndpointFunctions<T extends HasId>(
 
       const result = performAggregate(
         filteredItems.map((item) => Number(item[property])),
-        aggregate
+        aggregate,
       );
 
       console.info(label, "aggregate", { input, result });
@@ -223,7 +229,7 @@ export function mockRestEndpointFunctions<T extends HasId>(
 
     groupAggregate(
       input: GroupAggregateQuery<T>,
-      userToken?: string
+      userToken?: string,
     ): Promise<Record<string, number>> {
       const { aggregate, condition, property, groupBy } = input;
 
@@ -231,20 +237,26 @@ export function mockRestEndpointFunctions<T extends HasId>(
         ? items.filter((item) => evaluateCondition(condition, item))
         : items;
 
-      const numberArrays = filteredItems.reduce((result, item) => {
-        const key =
-          typeof item[groupBy] === "string"
-            ? (item[groupBy] as unknown as string)
-            : JSON.stringify(item[groupBy]);
-        result[key] = [...(result[key] || []), Number(item[property])];
-        return result;
-      }, {} as Record<string, number[]>);
+      const numberArrays = filteredItems.reduce(
+        (result, item) => {
+          const key =
+            typeof item[groupBy] === "string"
+              ? (item[groupBy] as unknown as string)
+              : JSON.stringify(item[groupBy]);
+          result[key] = [...(result[key] || []), Number(item[property])];
+          return result;
+        },
+        {} as Record<string, number[]>,
+      );
 
-      const result = Object.keys(numberArrays).reduce((result, key) => {
-        const array = numberArrays[key];
-        result[key] = performAggregate(array, aggregate);
-        return result;
-      }, {} as Record<string, number>);
+      const result = Object.keys(numberArrays).reduce(
+        (result, key) => {
+          const array = numberArrays[key];
+          result[key] = performAggregate(array, aggregate);
+          return result;
+        },
+        {} as Record<string, number>,
+      );
 
       console.info(label, "groupAggregate", { input, result });
 
@@ -255,9 +267,9 @@ export function mockRestEndpointFunctions<T extends HasId>(
 
 function performAggregate(array: number[], aggregate: Aggregate): number {
   switch (aggregate) {
-    case Aggregate.Sum:
+    case "Sum":
       return array.reduce((sum, value) => sum + value, 0);
-    case Aggregate.Average:
+    case "Average":
       return array.reduce((sum, value) => sum + value, 0) / array.length;
     default:
       throw new Error(`Not implemented aggregate: ${aggregate}`);
