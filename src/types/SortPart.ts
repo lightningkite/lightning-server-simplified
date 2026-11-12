@@ -1,6 +1,10 @@
-import { DataClassPathPartial } from "./DataClassPath";
+import { AnyOptic } from "./Optic";
 
 /**
- * SortPart can be a simple field path (e.g., "name"), or prefixed with "-" for descending (e.g., "-age"), "\~" for case-insensitive (e.g., "\~username"), or both (e.g., "-~createdAt").
+ * One field of a sort order: an {@link AnyOptic}, prefixed with `-` to sort descending, `~` to ignore case, or both
+ * as `-~`.
+ *
+ * The server sorts `null` before every other value and compares strings by code point, so `"Ab"` sorts before
+ * `"aa"` unless `~` is given.
  */
-export type SortPart<T> = `${"" | "-" | "~" | "-~"}${DataClassPathPartial<T>}`;
+export type SortPart<T> = `${"" | "-" | "~" | "-~"}${AnyOptic<T>}`;

@@ -1,4 +1,4 @@
-import { DataClassPath, PathValue, DataClassPathPartial } from "../src";
+import { Optic, PathValue, AnyOptic, DataClassPath, DataClassPathPartial } from "../src";
 
 type Dog = {
   name: string;
@@ -44,23 +44,27 @@ type _tests = {
     AssertNot<Equals<PathValue<Dog, "attributes?.breed?.size">, string>>,
   ];
   dataClassPathPartial: [
-    Assert<Extends<"attributes?.breed?.origin", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"attributes?.breed?.origin", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"attributes?.breed", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"attributes", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"shots?.*.received", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"shots?.*.expires", DataClassPathPartial<Dog>>>,
-    Assert<Extends<"shots", DataClassPathPartial<Dog>>>,
-    AssertNot<Extends<"", DataClassPathPartial<Dog>>>,
-    AssertNot<Extends<"attributes?", DataClassPathPartial<Dog>>>,
-    AssertNot<Extends<"attributes!.breed", DataClassPathPartial<Dog>>>,
-    AssertNot<Extends<"attributes?.breed?.size?", DataClassPathPartial<Dog>>>,
+    Assert<Extends<"attributes?.breed?.origin", AnyOptic<Dog>>>,
+    Assert<Extends<"attributes?.breed?.origin", AnyOptic<Dog>>>,
+    Assert<Extends<"attributes?.breed", AnyOptic<Dog>>>,
+    Assert<Extends<"attributes", AnyOptic<Dog>>>,
+    Assert<Extends<"shots?.*.received", AnyOptic<Dog>>>,
+    Assert<Extends<"shots?.*.expires", AnyOptic<Dog>>>,
+    Assert<Extends<"shots", AnyOptic<Dog>>>,
+    AssertNot<Extends<"", AnyOptic<Dog>>>,
+    AssertNot<Extends<"attributes?", AnyOptic<Dog>>>,
+    AssertNot<Extends<"attributes!.breed", AnyOptic<Dog>>>,
+    AssertNot<Extends<"attributes?.breed?.size?", AnyOptic<Dog>>>,
   ];
   dataClassPath: [
     Assert<
-      Equals<DataClassPath<Dog, string>, "name" | "owner.name" | "owner.email">
+      Equals<Optic<Dog, string>, "name" | "owner.name" | "owner.email">
     >,
-    AssertNot<Equals<DataClassPath<Dog, string>, "name">>,
+    AssertNot<Equals<Optic<Dog, string>, "name">>,
+  ];
+  deprecatedAliases: [
+    Assert<Equals<DataClassPath<Dog, string>, Optic<Dog, string>>>,
+    Assert<Equals<DataClassPathPartial<Dog>, AnyOptic<Dog>>>,
   ];
 };
 

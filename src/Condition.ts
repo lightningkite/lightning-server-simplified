@@ -1,55 +1,166 @@
+/**
+ * A filter on values of type `T`, serialized the way the server's `Condition` is.
+ *
+ * A condition is an object with exactly one key: an operator such as `Equal`, or a field name of `T` whose value is
+ * a condition on that field. So `{ address: { city: { Equal: "Provo" } } }` matches values whose `address.city` is
+ * `"Provo"`. Which operators are available depends on `T`; see {@link StringCondition}, {@link ArrayCondition}
+ * and {@link GeoCondition}.
+ *
+ * Not every database backend supports every operator; `RegexMatches` in particular may be rejected.
+ */
 export type Condition<T> =
-  | { Never: true }
-  | { Always: true }
-  | { And: Array<Condition<T>> }
-  | { Or: Array<Condition<T>> }
-  | { Not: Condition<T> }
-  | { Equal: T }
-  | { NotEqual: T }
-  | { Inside: Array<T> }
-  | { NotInside: Array<T> }
-  | { GreaterThan: T }
-  | { LessThan: T }
-  | { GreaterThanOrEqual: T }
-  | { LessThanOrEqual: T }
-  | { IntBitsClear: number }
-  | { IntBitsSet: number }
-  | { IntBitsAnyClear: number }
-  | { IntBitsAnySet: number }
-  | { IfNotNull: Condition<NonNullable<T>> }
+  | {
+      /** Matches nothing. */
+      Never: true;
+    }
+  | {
+      /** Matches everything. */
+      Always: true;
+    }
+  | {
+      /** Matches when every condition matches, so an empty list matches everything. */
+      And: Array<Condition<T>>;
+    }
+  | {
+      /** Matches when any condition matches, so an empty list matches nothing. */
+      Or: Array<Condition<T>>;
+    }
+  | {
+      /** Matches when the condition doesn't. */
+      Not: Condition<T>;
+    }
+  | {
+      /** Matches values equal to this one. */
+      Equal: T;
+    }
+  | {
+      /** Matches values not equal to this one. */
+      NotEqual: T;
+    }
+  | {
+      /** Matches values equal to any of these. The server treats the list as a set. */
+      Inside: Array<T>;
+    }
+  | {
+      /** Matches values equal to none of these. The server treats the list as a set. */
+      NotInside: Array<T>;
+    }
+  | {
+      /** Matches values greater than this one. */
+      GreaterThan: T;
+    }
+  | {
+      /** Matches values less than this one. */
+      LessThan: T;
+    }
+  | {
+      /** Matches values greater than or equal to this one. */
+      GreaterThanOrEqual: T;
+    }
+  | {
+      /** Matches values less than or equal to this one. */
+      LessThanOrEqual: T;
+    }
+  | {
+      /** Matches integers where every bit of this mask is `0`. */
+      IntBitsClear: number;
+    }
+  | {
+      /** Matches integers where every bit of this mask is `1`. */
+      IntBitsSet: number;
+    }
+  | {
+      /** Matches integers where at least one bit of this mask is `0`. */
+      IntBitsAnyClear: number;
+    }
+  | {
+      /** Matches integers where at least one bit of this mask is `1`. */
+      IntBitsAnySet: number;
+    }
+  | {
+      /** Matches values that aren't `null` and match this condition. */
+      IfNotNull: Condition<NonNullable<T>>;
+    }
   | StringCondition<T>
   | ArrayCondition<T>
   | GeoCondition<T>
   | { [P in keyof T]?: Condition<T[P]> };
 
+/** The {@link Condition} operators available on strings. */
+type StringCondition<T> = T extends string
+  ?
+      | {
+          /** Matches strings that contain `value`, ignoring case when `ignoreCase` is `true`. */
+          StringContains: { value: string; ignoreCase?: boolean };
+        }
+      | {
+          /**
+           * Matches strings where `pattern` is found anywhere, ignoring case when `ignoreCase` is `true`.
+           *
+           * The match is unanchored, like MongoDB's `$regex` and Postgres's `~`; anchor the pattern with `^…$` to
+           * match the whole string.
+           */
+          RegexMatches: { pattern: string; ignoreCase?: boolean };
+        }
+  : never;
+
+/**
+ * The {@link Condition} operators available on lists and sets.
+ *
+ * `CollectionAllElements` and `CollectionAnyElements` are the server's names; the `List` and `Set` forms are aliases
+ * it also accepts.
+ */
 type ArrayCondition<T> =
   T extends Array<infer E>
     ?
-        | { CollectionAllElements: Condition<E> }
-        | { CollectionAnyElements: Condition<E> }
-        | { ListAllElements: Condition<E> }
-        | { ListAnyElements: Condition<E> }
-        | { SetAllElements: Condition<E> }
-        | { SetAnyElements: Condition<E> }
+        | {
+            /** Matches collections whose every element matches this condition, including empty ones. */
+            CollectionAllElements: Condition<E>;
+          }
+        | {
+            /** Matches collections with at least one element that matches this condition. */
+            CollectionAnyElements: Condition<E>;
+          }
+        | {
+            /** Alias of `CollectionAllElements`. */
+            ListAllElements: Condition<E>;
+          }
+        | {
+            /** Alias of `CollectionAnyElements`. */
+            ListAnyElements: Condition<E>;
+          }
+        | {
+            /** Alias of `CollectionAllElements`. */
+            SetAllElements: Condition<E>;
+          }
+        | {
+            /** Alias of `CollectionAnyElements`. */
+            SetAnyElements: Condition<E>;
+          }
     : never;
 
-type StringCondition<T> = T extends string
-  ?
-      | { StringContains: { value: string; ignoreCase?: boolean } }
-      | { RegexMatches: { pattern: string; ignoreCase?: boolean } }
-  : never;
-
-/** A GeoJSON point, which is how the server serializes a `GeoCoordinate`. */
+/** A GeoJSON point, which is how the server serializes a `GeoCoordinate`: `coordinates` is `[longitude, latitude]`. */
 export interface GeoCoordinate {
   type: string;
   coordinates: Array<number>;
 }
 
-/** Distances are in meters. */
+/** The {@link Condition} operators available on a {@link GeoCoordinate}. */
 type GeoCondition<T> = T extends GeoCoordinate
-  ? { GeoDistance: { value: T; greaterThan?: number; lessThan?: number } }
+  ? {
+      /**
+       * Matches points whose great-circle distance from `value` is between `greaterThan` and
+       * `lessThan` meters, inclusive.
+       *
+       * `greaterThan` defaults to `0` and `lessThan` to 100,000 km.
+       */
+      GeoDistance: { value: T; greaterThan?: number; lessThan?: number };
+    }
   : never;
 
+/**
+ * Returns `true` if `model` matches `condition`, evaluated in memory the way the server does.
+ */
 export function evaluateCondition<T>(
   condition: Condition<T>,
   model: T,
@@ -115,9 +226,9 @@ export function evaluateCondition<T>(
     case "IntBitsSet":
       return ((model as unknown as number) & value) === value;
     case "IntBitsAnyClear":
-      return ((model as unknown as number) & value) < value;
+      return ((model as unknown as number) & value) !== value;
     case "IntBitsAnySet":
-      return ((model as unknown as number) & value) > 0;
+      return ((model as unknown as number) & value) !== 0;
     case "CollectionAllElements":
     case "ListAllElements":
     case "SetAllElements":

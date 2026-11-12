@@ -1,6 +1,6 @@
 {
   "name": "@lightningkite/lightning-server-simplified",
-  "version": "2.0.0",
+  "version": "5.4.0",
   "description": "TypeScript types and client utilities for Lightning Server (Condition, Modification, Query, REST endpoints, fetchers, mocks).",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -25,6 +25,12 @@ describe("evaluateCondition", () => {
     expect(evaluateCondition({ CollectionAllElements: { Equal: 2 } }, [1, 2])).toBe(false);
   });
 
+  test("IntBitsAnyClear works with the sign bit", () => {
+    const signBit = 1 << 31;
+    expect(evaluateCondition({ IntBitsAnyClear: signBit }, 0)).toBe(true);
+    expect(evaluateCondition({ IntBitsAnySet: signBit }, -1)).toBe(true);
+  });
+
   test("GeoDistance", () => {
     // Claude: one degree of latitude is roughly 111 km.
     const origin = point(0, 0);
