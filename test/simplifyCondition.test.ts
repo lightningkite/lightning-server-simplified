@@ -337,22 +337,6 @@ describe("Condition Simplify", () => {
       ],
     });
   });
-
-  test("SetAnyElements and SetSizesEquals", () => {
-    const condition = {
-      And: [
-        {
-          SetAnyElements: {
-            Equal: 3,
-          },
-        },
-
-        { SetSizesEquals: 3 },
-      ],
-    } as const;
-
-    expect(condition).toMatchObject(condition);
-  });
 });
 
 // Testing helper functions

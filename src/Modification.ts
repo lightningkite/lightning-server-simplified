@@ -1,12 +1,12 @@
 import { Condition, evaluateCondition } from "./Condition";
 
 export type Modification<T> =
+  | { Nothing: true }
   | { Assign: T }
   | { Chain: Array<Modification<T>> }
   | { IfNotNull: Modification<NonNullable<T>> }
   | ArrayModification<T>
   | ComparableModification<T>
-  | StringModification<T>
   | NumberModification<T>
   | { [P in keyof T]?: Modification<T[P]> };
 
@@ -16,13 +16,9 @@ type ArrayModification<T> = NoNullGuard<
     ?
         | { ListRemove: Condition<E> }
         | { ListAppend: Array<E> }
-        | { ListDropFirst: true }
-        | { ListDropLast: true }
         | { ListRemoveInstances: Array<E> }
         | { SetAppend: Array<E> }
         | { SetRemove: Condition<E> }
-        | { SetDropFirst: true }
-        | { SetDropLast: true }
         | { SetRemoveInstances: Array<E> }
         | {
             ListPerElement: {
@@ -45,11 +41,6 @@ type ComparableModification<T> = NoNullGuard<
   T extends string | number ? { CoerceAtMost: T } | { CoerceAtLeast: T } : never
 >;
 
-type StringModification<T> = NoNullGuard<
-  T,
-  T extends string ? { AppendString: T } : never
->;
-
 type NumberModification<T> = NoNullGuard<
   T,
   T extends number ? { Increment: T } | { Multiply: T } : never
@@ -67,6 +58,8 @@ export function evaluateModification<T>(
   }
   const [key, value] = keyAndValue;
   switch (key) {
+    case "Nothing":
+      return model;
     case "Assign":
       return value as T;
     case "Chain":
@@ -75,10 +68,8 @@ export function evaluateModification<T>(
         current = evaluateModification(item, current);
       return current;
     case "IfNotNull":
-      if (model !== null && model !== undefined) {
-        return value as NonNullable<T>;
-      }
-      return model;
+      if (model === null || model === undefined) return model;
+      return evaluateModification(value as Modification<any>, model);
     case "CoerceAtMost":
       if (typeof model === "string" && typeof value == "string") {
         return model < value ? model : (value as unknown as T);
@@ -86,6 +77,7 @@ export function evaluateModification<T>(
       if (typeof model === "number" && typeof value == "number") {
         return Math.min(model, value) as unknown as T;
       }
+      throw new Error(`CoerceAtMost can't compare ${typeof model} with ${typeof value}`);
     case "CoerceAtLeast":
       if (typeof model === "string" && typeof value == "string") {
         return model > value ? model : (value as unknown as T);
@@ -93,6 +85,7 @@ export function evaluateModification<T>(
       if (typeof model === "number" && typeof value == "number") {
         return Math.max(model, value) as unknown as T;
       }
+      throw new Error(`CoerceAtLeast can't compare ${typeof model} with ${typeof value}`);
     case "Increment": {
       const typedValue = value as number;
       const typedModel = model as unknown as number;
@@ -103,16 +96,15 @@ export function evaluateModification<T>(
       const typedModel = model as unknown as number;
       return (typedModel * typedValue) as unknown as T;
     }
-    case "AppendString": {
-      const typedValue = value as string;
-      const typedModel = model as unknown as string;
-      return (typedModel + typedValue) as unknown as T;
-    }
-    case "ListAppend":
-    case "SetAppend": {
+    case "ListAppend": {
       const typedValue = value as Array<any>;
       const typedModel = model as unknown as Array<any>;
       return [...typedModel, ...typedValue] as unknown as T;
+    }
+    case "SetAppend": {
+      const typedValue = value as Array<any>;
+      const typedModel = model as unknown as Array<any>;
+      return [...new Set([...typedModel, ...typedValue])] as unknown as T;
     }
     case "ListRemove":
     case "SetRemove": {
@@ -127,19 +119,6 @@ export function evaluateModification<T>(
       const typedValue = value as Array<any>;
       const typedModel = model as unknown as Array<any>;
       return typedModel.filter((item) => !typedValue.includes(item)) as unknown as T;
-    }
-    case "ListDropFirst":
-    case "SetDropFirst": {
-      const typedValue = value as boolean;
-      const typedModel = model as unknown as Array<any>;
-      if (typedValue) {
-        return typedModel.slice(1) as unknown as T;
-      }
-    }
-    case "ListDropLast":
-    case "SetDropLast": {
-      const typedModel = model as unknown as Array<any>;
-      return (typedModel as unknown as Array<any>).slice(0, -1) as unknown as T;
     }
     case "ListPerElement":
     case "SetPerElement": {

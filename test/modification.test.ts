@@ -73,26 +73,11 @@ describe("List operations", () => {
     expect(
       evaluateModification({ ListAppend: [8, 13] }, numberList)
     ).toMatchObject([1, 1, 2, 3, 5, 8, 13]);
-    expect(
-      evaluateModification({ SetAppend: [8, 13] }, numberList)
-    ).toMatchObject([1, 1, 2, 3, 5, 8, 13]);
   });
-  test("ListDropFirst", () => {
+  test("SetAppend skips items already present", () => {
     expect(
-      evaluateModification({ ListDropFirst: true }, numberList)
-    ).toMatchObject([1, 2, 3, 5]);
-    expect(
-      evaluateModification({ SetDropFirst: true }, numberList)
-    ).toMatchObject([1, 2, 3, 5]);
-  });
-
-  test("ListDropLast", () => {
-    expect(
-      evaluateModification({ ListDropLast: true }, numberList)
-    ).toMatchObject([1, 1, 2, 3]);
-    expect(
-      evaluateModification({ SetDropLast: true }, numberList)
-    ).toMatchObject([1, 1, 2, 3]);
+      evaluateModification({ SetAppend: [3, 8] }, [1, 2, 3])
+    ).toEqual([1, 2, 3, 8]);
   });
 
   test("ListRemoveInstances", () => {
@@ -137,10 +122,14 @@ describe("ComparableModification", () => {
   expect(evaluateModification({ CoerceAtLeast: "b" }, "a")).toEqual("b");
 });
 
-describe("StringModification", () => {
-  expect(evaluateModification({ AppendString: " world" }, "hello")).toEqual(
-    "hello world"
-  );
+describe("Nothing", () => {
+  expect(evaluateModification({ Nothing: true }, 12)).toEqual(12);
+});
+
+describe("IfNotNull", () => {
+  const add = { IfNotNull: { Increment: 3 } } as const;
+  expect(evaluateModification<number | null>(add, 2)).toEqual(5);
+  expect(evaluateModification<number | null>(add, null)).toEqual(null);
 });
 
 describe("NumberModification", () => {

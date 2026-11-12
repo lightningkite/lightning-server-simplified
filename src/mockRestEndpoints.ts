@@ -11,7 +11,7 @@ import {
   QueryPartial,
 } from "./types/otherModels";
 import { HasId } from "./sessionRest";
-import { DeepPartial } from "types";
+import { DeepPartial } from "./types";
 
 export function mockRestEndpointFunctions<T extends HasId>(
   items: T[],

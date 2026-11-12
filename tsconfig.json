@@ -9,8 +9,7 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "esModuleInterop": true,
-    "allowJs": true,
-    "baseUrl": "src"
+    "allowJs": true
   },
   "include": ["src/**/*", "resources/**/*"]
 }
