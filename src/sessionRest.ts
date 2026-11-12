@@ -1,4 +1,4 @@
-import { DeepPartial } from "types";
+import { DeepPartial } from "./types";
 import { Condition } from "./Condition";
 import { Modification } from "./Modification";
 import {

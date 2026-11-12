@@ -1,14 +1,18 @@
 {
   "name": "@lightningkite/lightning-server-simplified",
-  "version": "1.2.1",
-  "description": "",
+  "version": "5.4.0",
+  "description": "TypeScript types and client utilities for Lightning Server (Condition, Modification, Query, REST endpoints, fetchers, mocks).",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.6",
-    "@types/jest": "^30.0.0"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "tsc",
@@ -21,7 +25,7 @@
     "url": "git+https://github.com/lightningkite/lightning-server-simplified.git"
   },
   "keywords": [
-    "ktor",
+    "lightning-server",
     "client"
   ],
   "license": "Apache-2.0",

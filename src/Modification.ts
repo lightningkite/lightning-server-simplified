@@ -1,36 +1,78 @@
 import { Condition, evaluateCondition } from "./Condition";
 
+/**
+ * An update to a value of type `T`, serialized the way the server's `Modification` is.
+ *
+ * A modification is an object with exactly one key: an operator such as `Assign`, or a field name of `T` whose value
+ * is a modification of that field. So `{ address: { city: { Assign: "Provo" } } }` changes only `address.city`.
+ * Which operators are available depends on `T`; see {@link ArrayModification}, {@link ComparableModification} and
+ * {@link NumberModification}. Those are unavailable on nullable values; wrap them in `IfNotNull` first.
+ */
 export type Modification<T> =
-  | { Assign: T }
-  | { Chain: Array<Modification<T>> }
-  | { IfNotNull: Modification<NonNullable<T>> }
+  | {
+      /** Leaves the value unchanged. */
+      Nothing: true;
+    }
+  | {
+      /** Replaces the value with this one. */
+      Assign: T;
+    }
+  | {
+      /** Applies each modification in order, each to the result of the one before. */
+      Chain: Array<Modification<T>>;
+    }
+  | {
+      /** Applies this modification unless the value is `null`, which stays `null`. */
+      IfNotNull: Modification<NonNullable<T>>;
+    }
   | ArrayModification<T>
   | ComparableModification<T>
-  | StringModification<T>
   | NumberModification<T>
   | { [P in keyof T]?: Modification<T[P]> };
 
+/**
+ * The {@link Modification} operators available on lists and sets.
+ *
+ * Use the `List` operators on a Kotlin `List` and the `Set` operators on a Kotlin `Set`; the server rejects the
+ * other kind.
+ */
 type ArrayModification<T> = NoNullGuard<
   T,
   T extends Array<infer E>
     ?
-        | { ListRemove: Condition<E> }
-        | { ListAppend: Array<E> }
-        | { ListDropFirst: true }
-        | { ListDropLast: true }
-        | { ListRemoveInstances: Array<E> }
-        | { SetAppend: Array<E> }
-        | { SetRemove: Condition<E> }
-        | { SetDropFirst: true }
-        | { SetDropLast: true }
-        | { SetRemoveInstances: Array<E> }
         | {
+            /** Adds these elements to the end. */
+            ListAppend: Array<E>;
+          }
+        | {
+            /** Removes every element that matches this condition. */
+            ListRemove: Condition<E>;
+          }
+        | {
+            /** Removes every element equal to one of these. */
+            ListRemoveInstances: Array<E>;
+          }
+        | {
+            /** Applies `modification` to every element that matches `condition`. */
             ListPerElement: {
               condition: Condition<E>;
               modification: Modification<E>;
             };
           }
         | {
+            /** Adds these elements, skipping any already present. */
+            SetAppend: Array<E>;
+          }
+        | {
+            /** Removes every element that matches this condition. */
+            SetRemove: Condition<E>;
+          }
+        | {
+            /** Removes these elements. */
+            SetRemoveInstances: Array<E>;
+          }
+        | {
+            /** Applies `modification` to every element that matches `condition`. */
             SetPerElement: {
               condition: Condition<E>;
               modification: Modification<E>;
@@ -39,24 +81,45 @@ type ArrayModification<T> = NoNullGuard<
     : never
 >;
 
-// Instant, local date, number, string (comparable)
+/** The {@link Modification} operators available on comparable values, such as numbers, strings and dates. */
 type ComparableModification<T> = NoNullGuard<
   T,
-  T extends string | number ? { CoerceAtMost: T } | { CoerceAtLeast: T } : never
+  T extends string | number
+    ?
+        | {
+            /** Replaces the value with this one if the value is greater. */
+            CoerceAtMost: T;
+          }
+        | {
+            /** Replaces the value with this one if the value is less. */
+            CoerceAtLeast: T;
+          }
+    : never
 >;
 
-type StringModification<T> = NoNullGuard<
-  T,
-  T extends string ? { AppendString: T } : never
->;
-
+/** The {@link Modification} operators available on numbers. */
 type NumberModification<T> = NoNullGuard<
   T,
-  T extends number ? { Increment: T } | { Multiply: T } : never
+  T extends number
+    ?
+        | {
+            /** Adds this amount to the value. */
+            Increment: T;
+          }
+        | {
+            /** Multiplies the value by this amount. */
+            Multiply: T;
+          }
+    : never
 >;
 
 type NoNullGuard<T, V> = [T] extends [Exclude<T, null | undefined>] ? V : never;
 
+/**
+ * Returns the result of applying `modification` to `model`, evaluated in memory the way the server does.
+ *
+ * `model` is not mutated.
+ */
 export function evaluateModification<T>(
   modification: Modification<T>,
   model: T
@@ -67,6 +130,8 @@ export function evaluateModification<T>(
   }
   const [key, value] = keyAndValue;
   switch (key) {
+    case "Nothing":
+      return model;
     case "Assign":
       return value as T;
     case "Chain":
@@ -75,10 +140,8 @@ export function evaluateModification<T>(
         current = evaluateModification(item, current);
       return current;
     case "IfNotNull":
-      if (model !== null && model !== undefined) {
-        return value as NonNullable<T>;
-      }
-      return model;
+      if (model === null || model === undefined) return model;
+      return evaluateModification(value as Modification<any>, model);
     case "CoerceAtMost":
       if (typeof model === "string" && typeof value == "string") {
         return model < value ? model : (value as unknown as T);
@@ -86,6 +149,7 @@ export function evaluateModification<T>(
       if (typeof model === "number" && typeof value == "number") {
         return Math.min(model, value) as unknown as T;
       }
+      throw new Error(`CoerceAtMost can't compare ${typeof model} with ${typeof value}`);
     case "CoerceAtLeast":
       if (typeof model === "string" && typeof value == "string") {
         return model > value ? model : (value as unknown as T);
@@ -93,6 +157,7 @@ export function evaluateModification<T>(
       if (typeof model === "number" && typeof value == "number") {
         return Math.max(model, value) as unknown as T;
       }
+      throw new Error(`CoerceAtLeast can't compare ${typeof model} with ${typeof value}`);
     case "Increment": {
       const typedValue = value as number;
       const typedModel = model as unknown as number;
@@ -103,16 +168,15 @@ export function evaluateModification<T>(
       const typedModel = model as unknown as number;
       return (typedModel * typedValue) as unknown as T;
     }
-    case "AppendString": {
-      const typedValue = value as string;
-      const typedModel = model as unknown as string;
-      return (typedModel + typedValue) as unknown as T;
-    }
-    case "ListAppend":
-    case "SetAppend": {
+    case "ListAppend": {
       const typedValue = value as Array<any>;
       const typedModel = model as unknown as Array<any>;
       return [...typedModel, ...typedValue] as unknown as T;
+    }
+    case "SetAppend": {
+      const typedValue = value as Array<any>;
+      const typedModel = model as unknown as Array<any>;
+      return [...new Set([...typedModel, ...typedValue])] as unknown as T;
     }
     case "ListRemove":
     case "SetRemove": {
@@ -127,19 +191,6 @@ export function evaluateModification<T>(
       const typedValue = value as Array<any>;
       const typedModel = model as unknown as Array<any>;
       return typedModel.filter((item) => !typedValue.includes(item)) as unknown as T;
-    }
-    case "ListDropFirst":
-    case "SetDropFirst": {
-      const typedValue = value as boolean;
-      const typedModel = model as unknown as Array<any>;
-      if (typedValue) {
-        return typedModel.slice(1) as unknown as T;
-      }
-    }
-    case "ListDropLast":
-    case "SetDropLast": {
-      const typedModel = model as unknown as Array<any>;
-      return (typedModel as unknown as Array<any>).slice(0, -1) as unknown as T;
     }
     case "ListPerElement":
     case "SetPerElement": {

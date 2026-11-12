@@ -1,6 +1,6 @@
-import { Condition } from "Condition";
-import { Query } from "types/otherModels";
-import { HasId, RestEndpoint } from "sessionRest";
+import { Condition } from "./Condition";
+import { Query } from "./types/otherModels";
+import { HasId, RestEndpoint } from "./sessionRest";
 
 export type WithAnnotations<T, A> = T & { _annotations: A };
 

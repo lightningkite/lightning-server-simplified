@@ -1,4 +1,4 @@
-import { Modification } from "Modification";
+import { Modification } from "./Modification";
 
 // Return types of the javascript "typeof" operator
 type typeofTypes =
